@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GraphWorkflow.Core\GraphWorkflow.Core.csproj" />
+    <ProjectReference Include="..\GraphWorkflow.Core\GraphWorkflow.csproj" />
   </ItemGroup>
 
 </Project>

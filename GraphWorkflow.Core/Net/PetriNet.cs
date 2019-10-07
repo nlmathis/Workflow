@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +13,8 @@ namespace GraphWorkflow.Net
         Marking PersistedMarking;
         Marking CurrentMarking;
         public int EndPlaceIndex;
-        public object WorkflowData;
+        public object PreviousWorkflowData;
+        public object CurrentWorkflowData;
         public Action<object> OnWorkflowCompletion;
         private object _workflowLock = new object();
         private ILogger _logger;
@@ -37,7 +39,13 @@ namespace GraphWorkflow.Net
 
         public string StartWorkflow(object inputData)
         {
-            WorkflowData = inputData;
+            if(inputData == null)
+            {
+                throw new ArgumentException("Can't start a workflow with null input data");
+            }
+            CurrentWorkflowData = inputData;
+            string copyInput = JsonConvert.SerializeObject(CurrentWorkflowData);
+            PreviousWorkflowData = JsonConvert.DeserializeObject(copyInput, CurrentWorkflowData.GetType());
             _logger.Log($"Starting workflow");
             GenerateNextMarking();
 
@@ -54,7 +62,7 @@ namespace GraphWorkflow.Net
                 }
                 else
                 {
-                    foreach (var transition in CurrentMarking.GetEnabledTransitions().Where(tr => tr.TransitionTrigger(WorkflowData)))
+                    foreach (var transition in CurrentMarking.GetEnabledTransitions().Where(tr => tr.TransitionTrigger(CurrentWorkflowData)))
                     {
                         StartTransition(transition);
                     }
@@ -85,7 +93,7 @@ namespace GraphWorkflow.Net
         private void End()
         {
             _logger.Log("Ending workflow");
-            OnWorkflowCompletion(WorkflowData);
+            OnWorkflowCompletion(CurrentWorkflowData);
         }
         private void PersistMarking()
         {
@@ -95,6 +103,15 @@ namespace GraphWorkflow.Net
             string persistDetails = string.Join("\n", placeDiffs.Select(diff => $" -- {diff.ToString()} skip persistence: {diff.PreviousState == PlaceState.Unused && diff.NewState == PlaceState.Empty}")
                 .Concat(transitionDiffs.Select(diff => $" -- {diff.ToString()}, skip persistence: {CurrentMarking.Transitions[diff.TransitionIndex].StartType == TransitionStartType.NoOp}")));
             _logger.Log(persistDetails);
+
+            string previousWorkflowDataString = JsonConvert.SerializeObject(PreviousWorkflowData);
+            string currentWorkflowDataString = JsonConvert.SerializeObject(CurrentWorkflowData);
+            if(previousWorkflowDataString != currentWorkflowDataString)
+            {
+                _logger.Log($" -- Workflow data needs to update from : {previousWorkflowDataString} to {currentWorkflowDataString}");
+                PreviousWorkflowData = JsonConvert.DeserializeObject(currentWorkflowDataString, CurrentWorkflowData.GetType());
+            }
+
             _logger.Log("End persisting marking");
             PersistedMarking = CurrentMarking.Clone();
             //Consider including IPersister here
@@ -134,14 +151,14 @@ namespace GraphWorkflow.Net
 
         private void StartTransition(Transition transitionNodeToStart)
         {
-            StartTransition(transitionNodeToStart, WorkflowData);
+            StartTransition(transitionNodeToStart, CurrentWorkflowData);
         }
 
         private void EndTransition(object transitionResult, Transition transitionNodeToEnd)
         {
             lock (_workflowLock)
             {
-                transitionNodeToEnd.PostTransitionAction(WorkflowData, transitionResult);
+                transitionNodeToEnd.PostTransitionAction(CurrentWorkflowData, transitionResult);
                 transitionNodeToEnd.State = TransitionState.Completed;
                 _logger.Log($"Producing output tokens for transition: {transitionNodeToEnd.Name}");
                 foreach (var outputPlaceIndes in transitionNodeToEnd.OutputPlaceIndicies)

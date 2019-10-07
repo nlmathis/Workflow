@@ -29,6 +29,13 @@ namespace GraphWorkflow.Net
             StartType = startType;
         }
 
+        public Transition(TransitionDefinition transitionDefinition, Func<object, bool> transitionTrigger, IList<int> inputPlaceIndicies, IList<int> outputPlaceIndicies)
+           : this(transitionDefinition.Name, transitionDefinition.TransitionAction, transitionDefinition.PostTransitionAction, 
+                 transitionTrigger, inputPlaceIndicies, outputPlaceIndicies, transitionDefinition.TransitionStartType)
+        {
+
+        }
+
         public Transition Clone()
         {
             var transition = new Transition(Name, TransitionAction, PostTransitionAction, TransitionTrigger, InputPlaceIndicies, OutputPlaceIndicies, StartType);

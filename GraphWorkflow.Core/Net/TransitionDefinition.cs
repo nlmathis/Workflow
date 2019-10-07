@@ -9,13 +9,15 @@ namespace GraphWorkflow.Net
         public string Name;
         public Func<object, object> TransitionAction;
         public Action<object, object> PostTransitionAction;
-        public bool ShouldWait;
-        public TransitionDefinition(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, bool shouldWait = false)
+        public TransitionStartType TransitionStartType;
+        public TransitionDefinition(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, TransitionStartType transitionStartType =  TransitionStartType.Immediate)
         {
             Name = name;
             TransitionAction = transitionAction;
             PostTransitionAction = postTransitionAction;
-            ShouldWait = shouldWait;
+            TransitionStartType = transitionStartType;
         }
     }
+
+   
 }

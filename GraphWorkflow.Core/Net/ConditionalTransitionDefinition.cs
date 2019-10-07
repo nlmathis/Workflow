@@ -6,7 +6,7 @@ namespace GraphWorkflow.Net
 {
     public class ConditionalTransitionDefinition
     {
-        public ConditionalTransitionDefinition(Func<object, bool> triggerCondition, Func<PetriNetDefinition, PetriNetDefinition> transitionContext)
+        public ConditionalTransitionDefinition(Func<object, bool> triggerCondition, Func<Transition> transitionContext)
         {
 
         }

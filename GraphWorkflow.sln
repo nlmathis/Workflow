@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29326.143
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphWorkflow.Core", "GraphWorkflow.Core\GraphWorkflow.Core.csproj", "{D2331FBD-E5D6-427C-80E8-38D8F6791CA2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphWorkflow", "GraphWorkflow.Core\GraphWorkflow.csproj", "{D2331FBD-E5D6-427C-80E8-38D8F6791CA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GraphWorkflow.Tests", "GraphWorkflow.Tests\GraphWorkflow.Tests.csproj", "{850D9F62-2FAB-4437-AE54-7655E9B471ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphWorkflow.Tests", "GraphWorkflow.Tests\GraphWorkflow.Tests.csproj", "{850D9F62-2FAB-4437-AE54-7655E9B471ED}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
