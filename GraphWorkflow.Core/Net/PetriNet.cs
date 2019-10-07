@@ -92,8 +92,8 @@ namespace GraphWorkflow.Net
             _logger.Log("Start persisting marking");
             var placeDiffs = CurrentMarking.GetPlaceDiffs(PersistedMarking);
             var transitionDiffs = CurrentMarking.GetTransitionDiffs(PersistedMarking);
-            string persistDetails = string.Join("\n", placeDiffs.Select(diff => $" -- {diff.ToString()}")
-                .Concat(transitionDiffs.Select(diff => $" -- {diff.ToString()}")));
+            string persistDetails = string.Join("\n", placeDiffs.Select(diff => $" -- {diff.ToString()} skip persistence: {diff.PreviousState == PlaceState.Unused && diff.NewState == PlaceState.Empty}")
+                .Concat(transitionDiffs.Select(diff => $" -- {diff.ToString()}, skip persistence: {CurrentMarking.Transitions[diff.TransitionIndex].StartType == TransitionStartType.NoOp}")));
             _logger.Log(persistDetails);
             _logger.Log("End persisting marking");
             PersistedMarking = CurrentMarking.Clone();
@@ -108,7 +108,7 @@ namespace GraphWorkflow.Net
                 CurrentMarking.Places[inputPlaceIndex].State = PlaceState.Empty;
             }
 
-            if (transitionNodeToStart.ShouldWait && transitionNodeToStart.State != TransitionState.Waiting)
+            if (transitionNodeToStart.StartType == TransitionStartType.Wait && transitionNodeToStart.State != TransitionState.Waiting)
             {
                 _logger.Log($"Updating transition: {transitionNodeToStart.Name} to Waiting");
                 transitionNodeToStart.State = TransitionState.Waiting;
@@ -121,7 +121,15 @@ namespace GraphWorkflow.Net
                     .ContinueWith(task => EndTransition(task.Result, transitionNodeToStart));
             }
 
-            PersistMarking();
+            //As an optimization only persist marking if the transition isn't a NoOp
+            if(transitionNodeToStart.StartType == TransitionStartType.NoOp)
+            {
+                _logger.Log($"Skip persisting marking after start of {transitionNodeToStart.StartType} transition");
+            }
+            else
+            {
+                PersistMarking();
+            }
         }
 
         private void StartTransition(Transition transitionNodeToStart)
@@ -141,7 +149,15 @@ namespace GraphWorkflow.Net
                     CurrentMarking.Places[outputPlaceIndes].State = PlaceState.HasToken;
                 }
 
-                PersistMarking();
+                if(transitionNodeToEnd.StartType == TransitionStartType.NoOp)
+                {
+                    _logger.Log($"Skip persisting marking after completion of {transitionNodeToEnd.StartType} transition");
+                }
+                else
+                {
+                    PersistMarking();
+                }
+                
             }
             GenerateNextMarking();
         }

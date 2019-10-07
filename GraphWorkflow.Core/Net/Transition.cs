@@ -15,8 +15,8 @@ namespace GraphWorkflow.Net
 
         public TransitionState State { get; set; }
 
-        public bool ShouldWait { get; private set; }
-        public Transition(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, Func<object, bool> transitionTrigger, IList<int> inputPlaceIndicies, IList<int> outputPlaceIndicies, bool shouldWait = false)
+        public TransitionStartType StartType { get; private set; }
+        public Transition(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, Func<object, bool> transitionTrigger, IList<int> inputPlaceIndicies, IList<int> outputPlaceIndicies, TransitionStartType startType = TransitionStartType.Immediate)
         {
             Name = name;
             TransitionAction = transitionAction;
@@ -26,12 +26,15 @@ namespace GraphWorkflow.Net
             OutputPlaceIndicies = outputPlaceIndicies;
             TransitionAction = transitionAction;
             State = TransitionState.Unused;
-            ShouldWait = shouldWait;
+            StartType = startType;
         }
 
         public Transition Clone()
         {
-            return new Transition(Name, TransitionAction, PostTransitionAction, TransitionTrigger, InputPlaceIndicies, OutputPlaceIndicies, ShouldWait);
+            var transition = new Transition(Name, TransitionAction, PostTransitionAction, TransitionTrigger, InputPlaceIndicies, OutputPlaceIndicies, StartType);
+            transition.State = State;
+
+            return transition;
         }
     }
 
@@ -42,5 +45,12 @@ namespace GraphWorkflow.Net
         Completed,
         Failed,
         Unused
+    }
+
+    public enum TransitionStartType
+    {
+        Immediate,
+        Wait,
+        NoOp
     }
 }

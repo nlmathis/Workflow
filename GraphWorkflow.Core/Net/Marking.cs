@@ -37,6 +37,7 @@ namespace GraphWorkflow.Net
 
         public IEnumerable<PlaceDiff> GetPlaceDiffs(Marking previousMarking)
         {
+            //TODO: consider merging GetPlaceDiffs and GetTransitionDiffs by using generics
             var diffs = previousMarking.Places
                 .Zip(Places, (prevPlace, currPlace) => new { prevPlace, currPlace })
                 .Select((placePair, placeIndex) => new { placeIndex, placePair.prevPlace, placePair.currPlace })

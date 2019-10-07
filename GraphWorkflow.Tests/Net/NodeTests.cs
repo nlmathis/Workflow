@@ -21,14 +21,15 @@ namespace GraphWorkflow.Tests.Net
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-            var workflow = new PetriNet(2, wfObj => isWorkflowCompleted = true, 
+            var workflow = new PetriNet(3, wfObj => isWorkflowCompleted = true, 
                 new Marking
                 (
-                    new List<Place> { new Place(PlaceState.HasToken), new Place(), new Place() },
+                    new List<Place> { new Place(PlaceState.HasToken), new Place(), new Place(), new Place() },
                     new List<Transition>
                     {
                         new Transition("FirstAction", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; }, wfObj => true, new List<int> {0}, new List<int> {1}),
-                        new Transition("SecondAction", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }, wfObj => true, new List<int> {1}, new List<int> {2}),
+                        new Transition("NoOp", wfObj => {  return null; }, (wfObj, resObj) => { }, wfObj => true, new List<int> {1}, new List<int> {2}, TransitionStartType.NoOp),
+                        new Transition("SecondAction", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }, wfObj => true, new List<int> {2}, new List<int> {3}),
                     }
                 ),
                 logger);
@@ -64,7 +65,7 @@ namespace GraphWorkflow.Tests.Net
                     new List<Transition>
                     { 
                         new Transition("SendApprovalRequest", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { }, wfObj => true, new List<int> {0}, new List<int> {1}),
-                        new Transition("ApproveReject", wfObj => { concurrentQueue.Enqueue(1); return wfObj; }, (wfObj, resObj) => ((SimpleDualStepWorkflowData)wfObj).WasApproved = ((bool)resObj), wfObj => true, new List<int> {1}, new List<int> {2}, true),
+                        new Transition("ApproveReject", wfObj => { concurrentQueue.Enqueue(1); return wfObj; }, (wfObj, resObj) => ((SimpleDualStepWorkflowData)wfObj).WasApproved = ((bool)resObj), wfObj => true, new List<int> {1}, new List<int> {2}, TransitionStartType.Wait),
                         new Transition("SendRequestApproval", wfObj => { concurrentQueue.Enqueue(2); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; }, wfObj => ((SimpleDualStepWorkflowData)wfObj).WasApproved, new List<int> {2}, new List<int> {3}),
                         new Transition("SendRequestRejection", wfObj => { concurrentQueue.Enqueue(3); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }, wfObj => !((SimpleDualStepWorkflowData)wfObj).WasApproved, new List<int> {2}, new List<int> {3}),
                         new Transition("PersistToDb", wfObj => { concurrentQueue.Enqueue(4); return null; }, (wfObj, resObj) => { }, wfObj => true, new List<int>{3}, new List<int>{4})
