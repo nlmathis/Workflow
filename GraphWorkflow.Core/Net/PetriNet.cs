@@ -5,33 +5,33 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GraphWorkflow.Core
+namespace GraphWorkflow.Net
 {
-    public class Workflow
+    public class PetriNet
     {
-        public IList<PlaceNode> PlaceNodes;
-        public int EndPlaceNodeIndex;
-        public IList<TransitionNode> TransitionNodes;
+        Marking PersistedMarking;
+        Marking CurrentMarking;
+        public int EndPlaceIndex;
         public object WorkflowData;
         public Action<object> OnWorkflowCompletion;
         private object _workflowLock = new object();
         private ILogger _logger;
 
-        public Workflow(int endPlaceNodeIndex, Action<object> onWorkflowCompletion, IList<PlaceNode> placeNodes, IList<TransitionNode> transitionNodes, ILogger logger)
+        public PetriNet(int endPlaceIndex, Action<object> onWorkflowCompletion, Marking initialMarking, ILogger logger)
         {
-            EndPlaceNodeIndex = endPlaceNodeIndex;
+            EndPlaceIndex = endPlaceIndex;
             OnWorkflowCompletion = onWorkflowCompletion;
-            PlaceNodes = placeNodes;
-            TransitionNodes = transitionNodes;
+            CurrentMarking = initialMarking;
+            PersistedMarking = CurrentMarking.Clone();
             _logger = logger;
         }
 
-        public Workflow(WorkflowDefinition workflowDefinition, ILogger logger)
+        public PetriNet(PetriNetDefinition workflowDefinition, ILogger logger)
         {
-            EndPlaceNodeIndex = workflowDefinition.EndPlaceIndex;
+            EndPlaceIndex = workflowDefinition.EndPlaceIndex;
             OnWorkflowCompletion = workflowDefinition.OnWorkflowCompletion;
-            PlaceNodes = workflowDefinition.Places;
-            TransitionNodes = workflowDefinition.Transitions;
+            CurrentMarking = workflowDefinition.InitialMarking;
+            PersistedMarking = CurrentMarking.Clone();
             _logger = logger;
         }
 
@@ -39,24 +39,24 @@ namespace GraphWorkflow.Core
         {
             WorkflowData = inputData;
             _logger.Log($"Starting workflow");
-            UpdateWorkflowState();
+            GenerateNextMarking();
 
             return Guid.NewGuid().ToString();
         }
 
-        private void UpdateWorkflowState()
+        private void GenerateNextMarking()
         {
             lock(_workflowLock)
             {
-                if (PlaceNodes[EndPlaceNodeIndex].HasToken)
+                if (CurrentMarking.Places[EndPlaceIndex].HasToken)
                 {
-                    EndWorkflow();
+                    End();
                 }
                 else
                 {
-                    foreach (var transitionNode in TransitionNodes.Where(tn => tn.TransitionTrigger(WorkflowData) && tn.InputPlaceIndicies.All(inputPlaceIndex => PlaceNodes[inputPlaceIndex].HasToken)))
+                    foreach (var transition in CurrentMarking.GetEnabledTransitions().Where(tr => tr.TransitionTrigger(WorkflowData)))
                     {
-                        StartTransition(transitionNode);
+                        StartTransition(transition);
                     }
                 }
             }
@@ -66,7 +66,7 @@ namespace GraphWorkflow.Core
         {
             lock(_workflowLock)
             {
-                return TransitionNodes.Select((tn, id) => new { tn.State, id })
+                return CurrentMarking.Transitions.Select((tn, id) => new { tn.State, id })
                     .Where(tn => tn.State == TransitionState.Waiting)
                     .Select(tn => tn.id);
             }
@@ -76,29 +76,36 @@ namespace GraphWorkflow.Core
         {
             lock (_workflowLock)
             {
-                var nodeToExecute = TransitionNodes[transitionId];
+                var nodeToExecute = CurrentMarking.Transitions[transitionId];
                 _logger.Log($"External initiation of transition {nodeToExecute.Name}");
                 StartTransition(nodeToExecute, inputData);
             }
         }
 
-        private void EndWorkflow()
+        private void End()
         {
             _logger.Log("Ending workflow");
             OnWorkflowCompletion(WorkflowData);
         }
-        private void PersistWorkflowState()
+        private void PersistMarking()
         {
-            _logger.Log("Persisting workflow");
+            _logger.Log("Start persisting marking");
+            var placeDiffs = CurrentMarking.GetPlaceDiffs(PersistedMarking);
+            var transitionDiffs = CurrentMarking.GetTransitionDiffs(PersistedMarking);
+            string persistDetails = string.Join("\n", placeDiffs.Select(diff => $" -- {diff.ToString()}")
+                .Concat(transitionDiffs.Select(diff => $" -- {diff.ToString()}")));
+            _logger.Log(persistDetails);
+            _logger.Log("End persisting marking");
+            PersistedMarking = CurrentMarking.Clone();
             //Consider including IPersister here
         }
 
-        private void StartTransition(TransitionNode transitionNodeToStart, object inputData)
+        private void StartTransition(Transition transitionNodeToStart, object inputData)
         {
             _logger.Log($"Consuming input tokens for: transition {transitionNodeToStart.Name}");
             foreach (var inputPlaceIndex in transitionNodeToStart.InputPlaceIndicies)
             {
-                PlaceNodes[inputPlaceIndex].HasToken = false;
+                CurrentMarking.Places[inputPlaceIndex].State = PlaceState.Empty;
             }
 
             if (transitionNodeToStart.ShouldWait && transitionNodeToStart.State != TransitionState.Waiting)
@@ -114,15 +121,15 @@ namespace GraphWorkflow.Core
                     .ContinueWith(task => EndTransition(task.Result, transitionNodeToStart));
             }
 
-            PersistWorkflowState();
+            PersistMarking();
         }
 
-        private void StartTransition(TransitionNode transitionNodeToStart)
+        private void StartTransition(Transition transitionNodeToStart)
         {
             StartTransition(transitionNodeToStart, WorkflowData);
         }
 
-        private void EndTransition(object transitionResult, TransitionNode transitionNodeToEnd)
+        private void EndTransition(object transitionResult, Transition transitionNodeToEnd)
         {
             lock (_workflowLock)
             {
@@ -131,12 +138,12 @@ namespace GraphWorkflow.Core
                 _logger.Log($"Producing output tokens for transition: {transitionNodeToEnd.Name}");
                 foreach (var outputPlaceIndes in transitionNodeToEnd.OutputPlaceIndicies)
                 {
-                    PlaceNodes[outputPlaceIndes].HasToken = true;
+                    CurrentMarking.Places[outputPlaceIndes].State = PlaceState.HasToken;
                 }
 
-                PersistWorkflowState();
+                PersistMarking();
             }
-            UpdateWorkflowState();
+            GenerateNextMarking();
         }
 
     }

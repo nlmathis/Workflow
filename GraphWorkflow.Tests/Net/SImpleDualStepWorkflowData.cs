@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GraphWorkflow.Tests.Core
+namespace GraphWorkflow.Tests.Net
 {
     public class SimpleDualStepWorkflowData
     {

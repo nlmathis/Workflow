@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace GraphWorkflow.Core
+namespace GraphWorkflow.Net
 {
-    public class TransitionNode
+    public class Transition
     {
         public IList<int> InputPlaceIndicies { get; private set; }
         public IList<int> OutputPlaceIndicies { get; private set; }
@@ -16,7 +16,7 @@ namespace GraphWorkflow.Core
         public TransitionState State { get; set; }
 
         public bool ShouldWait { get; private set; }
-        public TransitionNode(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, Func<object, bool> transitionTrigger, IList<int> inputPlaceIndicies, IList<int> outputPlaceIndicies, bool shouldWait = false)
+        public Transition(string name, Func<object, object> transitionAction, Action<object, object> postTransitionAction, Func<object, bool> transitionTrigger, IList<int> inputPlaceIndicies, IList<int> outputPlaceIndicies, bool shouldWait = false)
         {
             Name = name;
             TransitionAction = transitionAction;
@@ -27,6 +27,11 @@ namespace GraphWorkflow.Core
             TransitionAction = transitionAction;
             State = TransitionState.Unused;
             ShouldWait = shouldWait;
+        }
+
+        public Transition Clone()
+        {
+            return new Transition(Name, TransitionAction, PostTransitionAction, TransitionTrigger, InputPlaceIndicies, OutputPlaceIndicies, ShouldWait);
         }
     }
 

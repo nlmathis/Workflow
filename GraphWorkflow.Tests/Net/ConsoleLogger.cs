@@ -1,9 +1,9 @@
-﻿using GraphWorkflow.Core;
+﻿using GraphWorkflow.Net;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace GraphWorkflow.Tests.Core
+namespace GraphWorkflow.Tests.Net
 {
     public class ConsoleLogger : ILogger
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace GraphWorkflow.Core
+namespace GraphWorkflow.Net
 {
     public interface ILogger
     {

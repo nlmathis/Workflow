@@ -3,10 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
-using GraphWorkflow.Core;
+using GraphWorkflow.Net;
 using NUnit.Framework;
 
-namespace GraphWorkflow.Tests.Core
+namespace GraphWorkflow.Tests.Net
 {
     [TestFixture]
     public class WorkflowDefinitionTests
@@ -19,11 +19,11 @@ namespace GraphWorkflow.Tests.Core
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-            WorkflowDefinition wfDef = WorkflowDefinition
+            PetriNetDefinition wfDef = PetriNetDefinition
                 .Start(new TransitionDefinition("FirstStep", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; }), wfObj => isWorkflowCompleted = true)
                 .Then(new TransitionDefinition("SecondStep", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }));
 
-            var workflow = new Workflow(wfDef, logger);
+            var workflow = new PetriNet(wfDef, logger);
             workflow.StartWorkflow(wfData);
 
             while(!isWorkflowCompleted)
@@ -31,9 +31,9 @@ namespace GraphWorkflow.Tests.Core
                 Thread.Sleep(100);
             }
 
-            Assert.AreEqual(2, concurrentQueue.Count);
-            Assert.IsTrue(wfData.WasFirstActioned);
-            Assert.IsTrue(wfData.WasSecondActioned);
+            Assert.AreEqual(2, concurrentQueue.Count, "2 transitions should be executed");
+            Assert.IsTrue(wfData.WasFirstActioned, $"FirstStep should have set {nameof(wfData.WasFirstActioned)}");
+            Assert.IsTrue(wfData.WasSecondActioned, $"SecondStep should have set {nameof(wfData.WasSecondActioned)}");
         }
 
         [Test]
@@ -44,7 +44,7 @@ namespace GraphWorkflow.Tests.Core
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-            WorkflowDefinition wfDef = WorkflowDefinition
+            PetriNetDefinition wfDef = PetriNetDefinition
                 .Start(new TransitionDefinition("StartStep", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { }), wfObj => isWorkflowCompleted = true)
                 //.ThenOneOf(
                 //    new ConditionalTransitionDefinition(wfObj => true, new TransitionDefinition("FirstStep", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; })),
@@ -52,8 +52,10 @@ namespace GraphWorkflow.Tests.Core
                 //)
                 .Then(new TransitionDefinition("EndStep", wfObj => { concurrentQueue.Enqueue(3); return null; }, (wfObj, resObj) => { }));
 
-            var workflow = new Workflow(wfDef, logger);
+            var workflow = new PetriNet(wfDef, logger);
             workflow.StartWorkflow(wfData);
+
+            Assert.AreEqual(3, concurrentQueue.Count, "3 transitions should be executed");
         }
 
         [Test]
@@ -64,14 +66,14 @@ namespace GraphWorkflow.Tests.Core
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-            WorkflowDefinition wfDef = WorkflowDefinition
+            PetriNetDefinition wfDef = PetriNetDefinition
                 .Start(new TransitionDefinition("StartStep", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { }), wfObj => isWorkflowCompleted = true)
                 .ThenAllOf(
                     new TransitionDefinition("FirstParallelAction", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; }),
                     new TransitionDefinition("SecondParallelAction", wfObj => { concurrentQueue.Enqueue(2); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; })
                 )
                 .Then(new TransitionDefinition("EndStep", wfObj => { concurrentQueue.Enqueue(3); return null; }, (wfObj, resObj) => { }));
-            var workflow = new Workflow(wfDef, logger);
+            var workflow = new PetriNet(wfDef, logger);
             workflow.StartWorkflow(wfData);
         }
     }
