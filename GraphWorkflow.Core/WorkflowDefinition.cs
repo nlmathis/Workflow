@@ -58,6 +58,7 @@ namespace GraphWorkflow.Core
 
             }
 
+            throw new NotImplementedException();
         }
 
         public WorkflowDefinition ThenAllOf(params TransitionDefinition[] transitionDefinitions)

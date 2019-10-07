@@ -46,10 +46,10 @@ namespace GraphWorkflow.Tests.Core
 
             WorkflowDefinition wfDef = WorkflowDefinition
                 .Start(new TransitionDefinition("StartStep", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { }), wfObj => isWorkflowCompleted = true)
-                .ThenOneOf(
-                    new ConditionalTransitionDefinition(wfObj => true, new TransitionDefinition("FirstStep", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; })),
-                    new ConditionalTransitionDefinition(wfObj => false, new TransitionDefinition("SecondStep", wfObj => { concurrentQueue.Enqueue(2); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }))
-                )
+                //.ThenOneOf(
+                //    new ConditionalTransitionDefinition(wfObj => true, new TransitionDefinition("FirstStep", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; })),
+                //    new ConditionalTransitionDefinition(wfObj => false, new TransitionDefinition("SecondStep", wfObj => { concurrentQueue.Enqueue(2); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; }))
+                //)
                 .Then(new TransitionDefinition("EndStep", wfObj => { concurrentQueue.Enqueue(3); return null; }, (wfObj, resObj) => { }));
 
             var workflow = new Workflow(wfDef, logger);
