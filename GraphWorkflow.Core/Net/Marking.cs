@@ -58,5 +58,10 @@ namespace GraphWorkflow.Net
 
             return diffs;
         }
+
+        public string GetTransitionTable
+        {
+            get { return string.Join("\n", Transitions.Select((tn, idx) => $"Id: {idx}, In: ({string.Join(",", tn.InputPlaceIndicies)}), Out: ({string.Join(",", tn.OutputPlaceIndicies)}), Name: {tn.Name}")); }
+        }
     }
 }

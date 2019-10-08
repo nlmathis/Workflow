@@ -36,6 +36,18 @@ namespace GraphWorkflow.Net
 
         }
 
+        public Transition(string name, IList<int> inputPlaceIndices, IList<int> outputPlaceIndices)
+            : this(name, (object wfObj) => null, (wfObj, result) => { }, wfObj => true, 
+                  inputPlaceIndices, outputPlaceIndices, TransitionStartType.NoOp)
+        {
+        }
+
+        public Transition(string name, IList<int> inputPlaceIndices, IList<int> outputPlaceIndices, Func<object, bool> transitionTrigger)
+            : this(name, (object wfObj) => null, (wfObj, result) => { }, transitionTrigger,
+                  inputPlaceIndices, outputPlaceIndices, TransitionStartType.NoOp)
+        {
+        }
+
         public Transition Clone()
         {
             var transition = new Transition(Name, TransitionAction, PostTransitionAction, TransitionTrigger, InputPlaceIndicies, OutputPlaceIndicies, StartType);

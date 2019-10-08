@@ -54,17 +54,52 @@ namespace GraphWorkflow.Tests.Net
         public void SimpleOrTest()
         {
             bool isWorkflowCompleted = false;
-            var wfData = new SimpleDualStepWorkflowData { WasFirstActioned = false, WasSecondActioned = false };
+            var wfData = new SimpleDualStepWorkflowData { WasApproved = true, WasFirstActioned = false, WasSecondActioned = false };
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-//            var workflow = new PetriNet(wfDef, logger);
-            //workflow.StartWorkflow(wfData);
+            var approvedStep = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("ApprovedStep", input => { concurrentQueue.Enqueue(0); return null; })
+                .AfterExecution((wfObj, result) => { wfObj.WasFirstActioned = true; });
 
-            Assert.AreEqual(3, concurrentQueue.Count, "3 transitions should be executed");
+            var rejectedStep = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("RejectedStep", input => { concurrentQueue.Enqueue(1); return null; })
+                .AfterExecution((wfObj, result) => { wfObj.WasSecondActioned = true; });
+
+            var persistDbStep = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("PersitToDb", input => { concurrentQueue.Enqueue(2); return null; });
+
+
+            PetriNetDefinition wfDef = WorkflowDefinition<SimpleDualStepWorkflowData>
+                .Start()
+                .ThenOneOf(
+                    new ConditionalStepDefinition<SimpleDualStepWorkflowData>(wfData => wfData.WasApproved,
+                        approvedCtx => approvedCtx
+                        .Then(approvedStep)
+                    ),
+                    new ConditionalStepDefinition<SimpleDualStepWorkflowData>(wfData => !wfData.WasApproved,
+                        rejectedCtx => rejectedCtx
+                        .Then(rejectedStep)
+                    )
+                )
+                .Then(persistDbStep);
+
+            wfDef.OnWorkflowCompletion = wfObj => isWorkflowCompleted = true;
+
+            var workflow = new PetriNet(wfDef, logger);
+            workflow.StartWorkflow(wfData);
+
+            while (!isWorkflowCompleted)
+            {
+                Thread.Sleep(100);
+            }
+
+            Assert.AreEqual(2, concurrentQueue.Count, "2 transitions should be executed");
+            Assert.IsTrue(wfData.WasFirstActioned);
+            Assert.IsFalse(wfData.WasSecondActioned);
         }
 
-        //[Test]
+        [Test]
         public void SimpleAndTest()
         {
             bool isWorkflowCompleted = false;
@@ -72,15 +107,41 @@ namespace GraphWorkflow.Tests.Net
             var logger = new ConsoleLogger();
             var concurrentQueue = new ConcurrentQueue<int>();
 
-            //PetriNetDefinition wfDef = PetriNetDefinition
-            //    .Start(new TransitionDefinition("StartStep", wfObj => { concurrentQueue.Enqueue(0); return null; }, (wfObj, resObj) => { }), wfObj => isWorkflowCompleted = true)
-            //    .ThenAllOf(
-            //        new TransitionDefinition("FirstParallelAction", wfObj => { concurrentQueue.Enqueue(1); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasFirstActioned = true; }),
-            //        new TransitionDefinition("SecondParallelAction", wfObj => { concurrentQueue.Enqueue(2); return null; }, (wfObj, resObj) => { ((SimpleDualStepWorkflowData)wfObj).WasSecondActioned = true; })
-            //    )
-            //    .Then(new TransitionDefinition("EndStep", wfObj => { concurrentQueue.Enqueue(3); return null; }, (wfObj, resObj) => { }));
-            //var workflow = new PetriNet(wfDef, logger);
-            //workflow.StartWorkflow(wfData);
+            var firstStepDefinition = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("FirstAction", input => { concurrentQueue.Enqueue(0); return null; })
+                .AfterExecution((wfData, result) => { wfData.WasFirstActioned = true; });
+
+            var secondStepDefinition = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("SecondAction", input => { concurrentQueue.Enqueue(1); return null; })
+                .AfterExecution((wfData, result) => { wfData.WasSecondActioned = true; });
+
+            var persistDbStep = new StepDefinition<SimpleDualStepWorkflowData, SimpleDualStepWorkflowData, SimpleDualStepWorkflowData>
+                ("PersitToDb", input => { concurrentQueue.Enqueue(2); return null; });
+
+            PetriNetDefinition wfDef = WorkflowDefinition<SimpleDualStepWorkflowData>
+                .Start()
+                .ThenAllOf(
+                    firstCtx => firstCtx
+                    .Then(firstStepDefinition),
+                    secondCtx => secondCtx
+                    .Then(secondStepDefinition)
+                )
+                .Then(persistDbStep);
+
+
+            wfDef.OnWorkflowCompletion = wfObj => isWorkflowCompleted = true;
+
+            var workflow = new PetriNet(wfDef, logger);
+            workflow.StartWorkflow(wfData);
+
+            while (!isWorkflowCompleted)
+            {
+                Thread.Sleep(100);
+            }
+
+            Assert.AreEqual(3, concurrentQueue.Count);
+            Assert.IsTrue(wfData.WasFirstActioned);
+            Assert.IsTrue(wfData.WasSecondActioned);
         }
     }
 }
